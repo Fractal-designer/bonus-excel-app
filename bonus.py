@@ -2,7 +2,7 @@ import pandas as pd
 import re
 import streamlit as st
 
-# === Функция парсинга одной строки ===
+# === Функция правильного парсинга строки ===
 def careful_parse_row(description, currency):
     try:
         description = re.sub(r'\s+', ' ', description)
@@ -14,18 +14,22 @@ def careful_parse_row(description, currency):
             'MXN': r'на депозит от.*?([\d\s]+) MXN'
         }
 
+        # Парсим депозит
         dep_match = re.search(deposit_patterns.get(currency, ""), description)
         dep = dep_match.group(1).replace(' ', '') + f" {currency}" if dep_match else None
 
+        # Парсим ставку
         bet = None
         if 'по' in description:
             after_po = description.split('по', 1)[-1]
+            after_po = re.split(r'в слоте|слоте', after_po)[0]  # Обрезаем по ключевым словам
             parts = [p.strip() for p in after_po.split('/')]
             for part in parts:
                 if currency in part:
                     bet = part.strip()
                     break
 
+        # Парсим фриспины
         fs_pattern = r'(\d+\sFS\s\(х\d+\))'
         fs_match = re.search(fs_pattern, description)
         fs_info = fs_match.group(1) if fs_match else None
@@ -48,7 +52,7 @@ if uploaded_file is not None:
         df = pd.read_excel(uploaded_file)
 
         # 🛠 Автокоррекция названий столбцов
-        df.columns = df.columns.str.strip().str.title()  # Привести к формату с заглавной буквы
+        df.columns = df.columns.str.strip().str.title()  # Привести к красивому виду
         rename_dict = {
             'User Id': 'User ID',
             'Userid': 'User ID',
