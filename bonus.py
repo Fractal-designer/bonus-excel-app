@@ -47,18 +47,38 @@ if uploaded_file is not None:
     try:
         df = pd.read_excel(uploaded_file)
 
+        # 🛠 Автокоррекция названий столбцов
+        df.columns = df.columns.str.strip().str.title()  # Привести к формату с заглавной буквы
+        rename_dict = {
+            'User Id': 'User ID',
+            'Userid': 'User ID',
+            'Currency': 'Currency',
+            'Description': 'Description'
+        }
+        df.rename(columns=rename_dict, inplace=True)
+
+        # 🧹 Оставляем только нужные столбцы
+        necessary_columns = ['User ID', 'Currency', 'Description']
+        df = df[[col for col in necessary_columns if col in df.columns]]
+
+        # Проверка на наличие всех обязательных столбцов
         if not {'User ID', 'Currency', 'Description'}.issubset(df.columns):
             st.error("❌ Файл должен содержать столбцы: User ID, Currency, Description")
         else:
-            df[['dep', 'bet', 'FS info', 'Original Text']] = df.apply(
+            # Парсинг данных
+            df[['customer_dep', 'customer_stavka', 'customer_spin', 'Original Text']] = df.apply(
                 lambda row: careful_parse_row(row['Description'], row['Currency']), axis=1
             )
 
-            result_df = df[['User ID', 'Currency', 'dep', 'bet', 'FS info', 'Original Text']]
+            result_df = df[['User ID', 'Currency', 'customer_dep', 'customer_stavka', 'customer_spin', 'Original Text']]
 
             st.success("✅ Файл успешно обработан!")
 
-            # Кнопка для скачивания
+            # Предпросмотр таблицы
+            st.subheader("🔍 Предпросмотр обработанного файла")
+            st.dataframe(result_df)
+
+            # Скачать готовый файл
             st.download_button(
                 label="📥 Скачать обработанный файл",
                 data=result_df.to_excel(index=False, engine='openpyxl'),
